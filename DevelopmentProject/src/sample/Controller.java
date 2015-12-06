@@ -12,9 +12,15 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
-import java.io.Console;
-import java.io.File;
+import java.io.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class Controller {
@@ -29,11 +35,19 @@ public class Controller {
     TableColumn<Table,String> tableColumnType;
     @FXML
     TableColumn<Table,String> tableColumnSize;
+    @FXML
+    Button buttonBack;
+    @FXML
+    Button buttonOpen;
 
     @FXML TreeView treeView;
     @FXML AnchorPane anchorPane;
     @FXML AnchorPane anchorPane3;
-    String pathFileStandart=new String("D:\\OfficeOfCollections");
+   // String pathFileStandart=new String("D:\\OfficeOfCollections");
+   //  String pathFileForward=new String("D:\\OfficeOfCollections");
+    ObservableList<String> pathFile=FXCollections.observableArrayList();
+
+
     public  class InfoFile
     {
         String name;
@@ -90,15 +104,17 @@ public class Controller {
             infoFile.setName(f.getName());
 
             if(f.isFile()) {
-                Long l;
+                double l;
                 l = f.length();
                 int count=0;
+                while(l>1024)
                 if(l>1024) {
                     l = l / 1024;
                     count++;
                 }
+                double nd=new BigDecimal(l).setScale(3, RoundingMode.UP).doubleValue();
                 String[] s={" bytes"," kbytes"," mbystes"," gbystes"};
-                infoFile.setSize(String.valueOf(l)+s[count]);
+                infoFile.setSize(String.valueOf(nd)+s[count]);
                 infoFile.setType("File");
             }
             else{
@@ -128,49 +144,166 @@ public class Controller {
         };
 
     }
+    class Writer extends Thread{
+        Path selectedFile;
+        Path saveFile;
+        public void setSelectedFile(Path p1 ){
+            selectedFile=p1;
+        }
+        public void setSaveFile(Path p2){
+            saveFile=p2;
+        }
+        public void run(){
+            try {
+                Files.copy(selectedFile,saveFile);
 
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    static Writer writer;
 
     Directory directory=new Directory();
     InfoFile infoFile=new InfoFile();
-    ListView l=new ListView();
+    String getOsType()
+    {
+        String osType;
+        String osName=System.getProperty("os.name");
+        String osNameMatch=osName.toLowerCase();
 
+        if(osNameMatch.contains("windows"))
+            osType="os_windows";
+        else
+        {
+            if(osNameMatch.contains("linux"))
+                osType="os_linux";
+            else
+                osType=new String("unKnow");
+        }
+        return osType;
+    }
 
 
 
     @FXML void initialize()
     {
-
+       String osType=getOsType();
+       if(osType.equals("os_windows")) {
+           pathFile.add("D:\\OfficeOfCollections");
+       }
+        if(osType.equals("os_linux"))
+           pathFile.add("/home/notepad/OfficeOfCollection");
         ObservableList<Table> data=FXCollections.observableArrayList();
         tableColumnName.setCellValueFactory(new PropertyValueFactory<Table, String>("Name"));
         tableColumnDataChange.setCellValueFactory(new PropertyValueFactory<Table, String>("DataChange"));
         tableColumnType.setCellValueFactory(new PropertyValueFactory<Table, String>("Type"));
         tableColumnSize.setCellValueFactory(new PropertyValueFactory<Table, String>("Size"));
         int j=0;
-        while(directory.picker(pathFileStandart).size()>j)
+        while(directory.picker(pathFile.get(pathFile.size()-1)).size()>j)
         {
-            infoFile=directory.picker(pathFileStandart).get(j);
+            infoFile=directory.picker(pathFile.get(pathFile.size()-1)).get(j);
             data.add(new Table(infoFile.getName(),infoFile.getData(),infoFile.getType(),infoFile.getSize()));
             j++;
         }
-
-
-
         tableView.setItems(data);
-
-
-
         tableView.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount() == 2){
-                    System.out.println("Double clicked");
                    Table t2=   tableView.getSelectionModel().getSelectedItem();
-                  // if(t2!=null)
-                  //  System.out.println(t2.getName());
+                   if(t2!=null) {
+                       if(osType.equals("os_windows"))
+                        pathFile.add(pathFile.get(pathFile.size()-1)+"\\"+t2.getName());
+                       else
+                       if(osType.equals("os_linux"))
+                           pathFile.add(pathFile.get(pathFile.size()-1)+"/"+t2.getName());
+
+                            File f =new File(pathFile.get(pathFile.size()-1));
+                       if(!f.isFile()) {
+                           ObservableList<Table> data = FXCollections.observableArrayList();
+                           tableColumnName.setCellValueFactory(new PropertyValueFactory<Table, String>("Name"));
+                           tableColumnDataChange.setCellValueFactory(new PropertyValueFactory<Table, String>("DataChange"));
+                           tableColumnType.setCellValueFactory(new PropertyValueFactory<Table, String>("Type"));
+                           tableColumnSize.setCellValueFactory(new PropertyValueFactory<Table, String>("Size"));
+                           int j = 0;
+                           while (directory.picker(pathFile.get(pathFile.size() - 1)).size() > j) {
+                               infoFile = directory.picker(pathFile.get(pathFile.size() - 1)).get(j);
+                               data.add(new Table(infoFile.getName(), infoFile.getData(), infoFile.getType(), infoFile.getSize()));
+                               j++;
+                           }
+
+                           tableView.setItems(data);
+                       }
+                       else
+                           pathFile.remove(pathFile.size()-1);
+                   }
                     tableView.getSelectionModel().clearSelection();
+                }
+                //////////end if event//////////
+                else
+                    if(event.getClickCount()==1){
+
+                        tableView.getSelectionModel().clearSelection();
+                   }
+            }
+        });
+        buttonBack.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                if(pathFile.size()>1)
+                {
+                    pathFile.remove(pathFile.size()-1);
+                    data.clear();
+                  int i=0;
+                    while(directory.picker(pathFile.get(pathFile.size()-1)).size()>i)
+                    {
+                        infoFile=directory.picker(pathFile.get(pathFile.size()-1)).get(i);
+                        data.add(new Table(infoFile.getName(),infoFile.getData(),infoFile.getType(),infoFile.getSize()));
+                        i++;
+                    }
+                    tableView.setItems(data);
                 }
             }
         });
+        buttonOpen.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                FileChooser fileChooser=new FileChooser();
+                fileChooser.setTitle("Open Resourse file");
+                fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Books","*.doc","*.docx","*.epub","*.pdf","*.txt"),
+                        new FileChooser.ExtensionFilter("Films and media","*avi"),
+                        new FileChooser.ExtensionFilter("All","*.*"));
+                Stage s=new Stage();
+                File selectedFile=fileChooser.showOpenDialog(s);
+                File dd=new File(pathFile.get(0));
+                fileChooser.setInitialFileName(selectedFile.getName());
+                fileChooser.setInitialDirectory(dd);
+                File saveFile=fileChooser.showSaveDialog(s);
+                writer=new Writer();
+                writer.setSelectedFile(selectedFile.toPath());
+                writer.setSaveFile(saveFile.toPath());
+                writer.start();
+
+            /*    try {
+                    Files.copy(selectedFile.toPath(),saveFile.toPath());
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }*/
+                // fileChooser.setInitialDirectory(selectedFile);
+              //  fileChooser.setInitialDirectory(f);
+          /*      File dd=new File(pathFile.get(0));
+                fileChooser.setInitialDirectory(dd);
+                fileChooser.setInitialFileName(f.getAbsolutePath());fileChooser.
+                fileChooser.showSaveDialog(s);
+                System.out.println("sgdggd");
+            */
+            }
+        });
+
+
+
    }
 }
 

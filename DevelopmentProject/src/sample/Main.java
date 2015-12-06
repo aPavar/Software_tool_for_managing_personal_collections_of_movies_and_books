@@ -13,6 +13,15 @@ import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 
 import java.io.File;
+
+class  Sinhronizer{
+    Controller controller;
+   public   Sinhronizer(){}
+    void setController(Controller c){controller=c;}
+    Controller getController(){return controller;}
+
+
+}
 public class Main extends Application {
 
 
@@ -25,23 +34,15 @@ public class Main extends Application {
         loader.setLocation(getClass().getResource("sample.fxml"));
         AnchorPane root = loader.load();
         Controller controller= loader.getController();
+        Sinhronizer sinhronizer=new Sinhronizer();
+        sinhronizer.setController(controller);
 
 ////////////////////////End code get class Controller
         primaryStage.setTitle("DevolopmentProject");
         primaryStage.setScene(new Scene(root));
-        String pathFile=new String("D:\\OfficeOfCollections");
-        File directory1=new File(pathFile);
-        if(!directory1.isFile()&&
-                !directory1.isDirectory())
-            System.out.println("Not File");
-        File[] listFile=directory1.listFiles();
-            int j=0;
-            while(controller.directory.picker(pathFile).size()>j)
-            {
-                controller.infoFile=controller.directory.picker(pathFile).get(j);
-                System.out.print(controller.infoFile.getName());
-                j++;
-            }
+      //  primaryStage.getScene().
+      //  String pathFile=new String("D:\\OfficeOfCollections");
+
      //   listView.setEditable(true);
      //   listView.setItems(data);
      //   listView.setCellFactory(ComboBoxListCell.forListView(data));
@@ -50,10 +51,16 @@ public class Main extends Application {
 
 
         primaryStage.show();
+
     }
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         launch(args);
+        Sinhronizer s=new Sinhronizer();
+        s.getController().writer.join();
+        if(s.getController().writer!=null)
+        s.getController().writer.interrupt();
+
     }
 }
